@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  wego-flight-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wego-flight-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      # Rate Limiting Configuration
+      - RATE_LIMIT_FLIGHTS_SEARCH_CAPACITY=10
+      - RATE_LIMIT_FLIGHTS_SEARCH_REFILL_TOKENS=10
+      - RATE_LIMIT_FLIGHTS_SEARCH_REFILL_DURATION=60
+      - RATE_LIMIT_FLIGHTS_SEARCH_REFILL_DURATION_UNIT=SECONDS
+      # Circuit Breaker Configuration
+      - RESILIENCE4J_CIRCUITBREAKER_INSTANCES_FLIGHTPROVIDER_WAITDURATIONINOPENSTATE=30s
+      - RESILIENCE4J_CIRCUITBREAKER_INSTANCES_FLIGHTPROVIDER_FAILURERATETHRESHOLD=50
+      - RESILIENCE4J_CIRCUITBREAKER_INSTANCES_FLIGHTPROVIDER_SLIDINGWINDOWSIZE=10
+      - RESILIENCE4J_CIRCUITBREAKER_INSTANCES_FLIGHTPROVIDER_MINIMUMNUMBEROFCALLS=5
+      # Aggregator API Configuration
+      - AGGREGATOR_AMADEUS_BASE_URL=https://api.amadeus.com
+      - AGGREGATOR_AMADEUS_TIMEOUT_SECONDS=10
+      - AGGREGATOR_SABRE_BASE_URL=https://api.sabre.com
+      - AGGREGATOR_SABRE_TIMEOUT_SECONDS=10
+      - AGGREGATOR_TRAVELPORT_BASE_URL=https://api.travelport.com
+      - AGGREGATOR_TRAVELPORT_TIMEOUT_SECONDS=10
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger-ui.html"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - wego-network
+
+networks:
+  wego-network:
+    driver: bridge
+

@@ -1,3 +1,8 @@
-# 1 
-- ask cursor to generate the rate limiter on the exact API
+# 1. ask cursor to generate the rate limiter on the exact API
 - prompt : "please add rate limit using bucket4j. i want to have rate limit for /api/v1/flights/search API. please for the rate limiter setup number put it in config"
+
+# 2. ask cursor to generate the outbond caching, and circuit breaker to partner.
+- prompt : "i want to build search aggregator on this api /api/v1/flights/search. request body must have Origin and destination airports (IATA codes), Departure date (and optional return date for round trips), Passenger counts (adults, children, infants), Cabin class preference (economy, premium economy, business, first), Optional filters (direct flights only, maximum number of stops, preferred airlines, maximum results to return). output will be like : Unique search identifier, List of flight options, each containing: (Flight segments (carrier, flight number, departure/arrival airports and times, duration, aircraft type), Pricing information (total price, currency, breakdown by passenger type, taxesand fees), Which providers returned this flight option, Ranking score), Metadata about the search (Which providers were queried and which responded, Search execution time, Any warnings about partial results). i want to hit multiple aggregator API(Amadeus, Sabre, Travelport), let assume they have same request and response but different API(create dummy api for this). please add cache for that outbound, cause they have rate limit. please add shutdown mechanism also if there is something wrong with their API(put it in config for how long and how much)"
+
+# 3. ask cursor to add the validation
+- prompt : "please handling this : Invalid input data (bad airport codes, invalid dates, invalid passenger counts), Rate limiting scenarios, All providers unavailable, System overload conditions

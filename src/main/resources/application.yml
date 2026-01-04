@@ -6,3 +6,37 @@ rate-limit:
       refill-duration: 60
       refill-duration-unit: SECONDS
 
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      flightProvider:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 5s
+
+# Aggregator API Configuration
+aggregator:
+  amadeus:
+    base-url: https://api.amadeus.com
+    timeout-seconds: 10
+  sabre:
+    base-url: https://api.sabre.com
+    timeout-seconds: 10
+  travelport:
+    base-url: https://api.travelport.com
+    timeout-seconds: 10
+
+# Cache Configuration
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m
+
