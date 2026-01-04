@@ -3,6 +3,7 @@ package com.flight.service;
 import com.flight.dto.FlightSearchRequest;
 import com.flight.dto.FlightSearchResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +43,7 @@ public class SabreFlightProvider implements FlightAggregatorProvider {
     }
     
     @Override
+    @Retry(name = "flightProvider", fallbackMethod = "retryFallbackSearch")
     @CircuitBreaker(name = "flightProvider", fallbackMethod = "fallbackSearch")
     @Cacheable(value = "flightSearchCache", key = "#request.origin + '-' + #request.destination + '-' + #request.departureDate + '-sabre'")
     public List<FlightSearchResponse.FlightOption> searchFlights(FlightSearchRequest request) {
@@ -90,6 +92,19 @@ public class SabreFlightProvider implements FlightAggregatorProvider {
         return results;
     }
     
+    /**
+     * Retry fallback - called when all retry attempts are exhausted
+     */
+    public List<FlightSearchResponse.FlightOption> retryFallbackSearch(FlightSearchRequest request, Exception e) {
+        logger.warn("[SABRE] Retry exhausted - Request: Origin={}, Destination={}, DepartureDate={}, Attempts: 3, Error: {}", 
+            request.getOrigin(), request.getDestination(), request.getDepartureDate(), e.getMessage());
+        // Re-throw to trigger circuit breaker fallback
+        throw new RuntimeException("Sabre API retry exhausted: " + e.getMessage(), e);
+    }
+    
+    /**
+     * Circuit breaker fallback - called when circuit is open or retry fails
+     */
     public List<FlightSearchResponse.FlightOption> fallbackSearch(FlightSearchRequest request, Exception e) {
         logger.warn("[SABRE] Circuit breaker opened - Request: Origin={}, Destination={}, DepartureDate={}, Error: {}", 
             request.getOrigin(), request.getDestination(), request.getDepartureDate(), e.getMessage());

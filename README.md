@@ -274,17 +274,48 @@ The API validates all input data and only accepts specific codes and values:
   - **executionTimeMs**: Total search execution time in milliseconds
   - **warnings**: Any warnings about partial results or provider failures
 
-### Validation Error Response
+### Error Responses
 
-When invalid data is provided, the API returns a `400 Bad Request` with validation errors:
+All error responses follow a consistent structured format:
+
+#### Validation Error Response (400 Bad Request)
+
+When invalid data is provided:
 
 ```json
 {
-  "error": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed. Please check the following fields:",
   "details": {
     "origin": "Invalid airport IATA code. Valid codes: LAX, JFK, LHR, CDG, DXB, SIN, ORD, SFO",
     "preferredAirlines": "Invalid airline IATA code. Valid codes: AA, UA, DL, BA, LH, AF, EK, SQ"
-  }
+  },
+  "timestamp": 1704067200000
+}
+```
+
+#### Rate Limit Error Response (429 Too Many Requests)
+
+When rate limit is exceeded:
+
+```json
+{
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Rate limit exceeded. Please try again later.",
+  "timestamp": 1704067200000
+}
+```
+
+#### Internal Server Error (500)
+
+When an unexpected error occurs:
+
+```json
+{
+  "code": "INTERNAL_SERVER_ERROR",
+  "message": "An unexpected error occurred",
+  "details": "Error details...",
+  "timestamp": 1704067200000
 }
 ```
 
@@ -292,10 +323,14 @@ When invalid data is provided, the API returns a `400 Bad Request` with validati
 
 - **Multi-Provider Aggregation**: Searches across Amadeus, Sabre, and Travelport simultaneously
 - **Caching**: Results are cached for 5 minutes to reduce API calls and improve performance
+- **Retry Mechanism**: Automatic retry with exponential backoff for transient failures (3 attempts)
 - **Circuit Breaker**: Automatic failover when provider APIs are down (configurable in `application.yml`)
 - **Rate Limiting**: API rate limiting using Bucket4j (10 requests per 60 seconds by default)
+  - **Note**: Current implementation uses in-memory rate limiting. For distributed deployments (Kubernetes, ECS), consider Redis-backed rate limiting. See [Rate Limiting](#rate-limiting) section for details.
 - **Deduplication**: Automatically deduplicates and ranks flight options from multiple providers
 - **Error Handling**: Graceful handling of provider failures with detailed metadata
+- **Structured Error Responses**: Consistent JSON error format across all endpoints
+- **Configuration Validation**: All configuration validated at startup with safe defaults
 
 ## API Documentation
 
@@ -335,10 +370,43 @@ All configuration can be found in `src/main/resources/application.yml`:
 rate-limit:
   flights:
     search:
-      capacity: 10              # Max tokens in bucket
-      refill-tokens: 10         # Tokens to refill
-      refill-duration: 60       # Refill interval
-      refill-duration-unit: SECONDS
+      capacity: 10              # Max tokens in bucket (must be > 0)
+      refill-tokens: 10         # Tokens to refill (must be > 0)
+      refill-duration: 60       # Refill interval (must be > 0)
+      refill-duration-unit: SECONDS  # SECONDS, MINUTES, HOURS, or DAYS
+```
+
+**Configuration Validation**: All rate limit values are validated at startup:
+- ✅ Capacity, refill tokens, and duration must be > 0
+- ✅ Duration unit must be one of: SECONDS, MINUTES, HOURS, DAYS
+- ✅ Invalid configuration will prevent application startup with clear error messages
+- ✅ Safe defaults provided (10 requests per 60 seconds)
+
+**⚠️ Distributed Rate Limiting Limitation**:
+- **Current Implementation**: Uses in-memory rate limiting (Bucket4j)
+- **Works for**: Single instance deployments, development, testing
+- **Limitation**: For distributed deployments (Kubernetes, ECS, multiple instances), each instance maintains its own rate limit counter
+  - Rate limits are per-instance, not shared across instances
+  - A user could make 10 requests to instance 1, 10 to instance 2, etc.
+- **Solutions for Distributed Deployments**:
+  - Use Redis-backed rate limiting (e.g., `bucket4j-redis`)
+  - Use API Gateway rate limiting (e.g., Kong, AWS API Gateway)
+  - Use a distributed cache like Hazelcast
+
+### Retry Configuration
+```yaml
+resilience4j:
+  retry:
+    instances:
+      flightProvider:
+        maxAttempts: 3                   # Total attempts (1 initial + 2 retries)
+        waitDuration: 1s                 # Initial wait time
+        enableExponentialBackoff: true   # Exponential backoff enabled
+        exponentialBackoffMultiplier: 2  # Backoff multiplier (1s, 2s, 4s)
+        retryExceptions:                 # Exceptions that trigger retry
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - java.util.concurrent.TimeoutException
 ```
 
 ### Circuit Breaker

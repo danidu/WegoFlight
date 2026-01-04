@@ -42,7 +42,35 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 3. Circuit Breaker Pattern
+### 3. Retry Mechanism
+
+**Decision**: Implement retry with exponential backoff using Resilience4j Retry.
+
+**Rationale**:
+- **Transient Failures**: Network issues, timeouts are often transient
+- **Improved Reliability**: Automatic retry increases success rate
+- **Exponential Backoff**: Prevents overwhelming failing services
+- **Configurable**: Retry only on specific exceptions (network errors, timeouts)
+
+**Configuration**:
+- **Max Attempts**: 3 (1 initial + 2 retries)
+- **Wait Duration**: 1 second initial wait
+- **Exponential Backoff**: Enabled with multiplier of 2 (1s, 2s, 4s)
+- **Retry Exceptions**: Network errors, timeouts, WebClient exceptions
+- **Ignore Exceptions**: Validation errors (don't retry invalid requests)
+
+**Retry Flow**:
+1. Initial attempt fails → Wait 1s → Retry 1
+2. Retry 1 fails → Wait 2s → Retry 2
+3. Retry 2 fails → Trigger circuit breaker fallback
+
+**Trade-offs**:
+- ✅ **Pros**: Handles transient failures, improves reliability
+- ⚠️ **Cons**: Increases response time on failures, may delay failure detection
+
+---
+
+### 4. Circuit Breaker Pattern
 
 **Decision**: Use Resilience4j circuit breaker for each provider with configurable thresholds.
 
@@ -62,7 +90,7 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 4. Deduplication Strategy
+### 5. Deduplication Strategy
 
 **Decision**: Deduplicate flights based on carrier, flight number, and departure time.
 
@@ -79,7 +107,7 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 5. Ranking Algorithm
+### 6. Ranking Algorithm
 
 **Decision**: Multi-factor ranking with weighted scores.
 
@@ -100,7 +128,7 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 6. Filtering vs Ranking
+### 7. Filtering vs Ranking
 
 **Decision**: Apply filters first, then rank the filtered results.
 
@@ -120,7 +148,7 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 7. Error Handling Strategy
+### 8. Error Handling Strategy
 
 **Decision**: Multi-layered error handling with graceful degradation.
 
@@ -142,7 +170,7 @@ This flight search aggregator service demonstrates a production-ready approach t
 
 ---
 
-### 8. Data Normalization
+### 9. Data Normalization
 
 **Decision**: All providers return standardized `FlightOption` structure.
 

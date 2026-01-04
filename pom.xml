@@ -104,6 +104,14 @@
         </dependency>
         <!-- HTTP Client END-->
 
+        <!-- Test Dependencies START-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Test Dependencies END-->
+
     </dependencies>
     <!-- DEPENDENCIES END-->
 

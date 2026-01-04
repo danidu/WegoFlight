@@ -20,6 +20,21 @@ resilience4j:
         failureRateThreshold: 50
         slowCallRateThreshold: 100
         slowCallDurationThreshold: 5s
+  retry:
+    instances:
+      flightProvider:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientException
+        ignoreExceptions:
+          - jakarta.validation.ValidationException
+          - java.lang.IllegalArgumentException
 
 # Aggregator API Configuration
 aggregator:
