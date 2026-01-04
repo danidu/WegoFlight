@@ -1,0 +1,8 @@
+rate-limit:
+  flights:
+    search:
+      capacity: 10
+      refill-tokens: 10
+      refill-duration: 60
+      refill-duration-unit: SECONDS
+
